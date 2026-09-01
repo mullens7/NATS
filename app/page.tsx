@@ -42,6 +42,7 @@ export default function Home() {
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
+  const [checked, setChecked] = useState(false);
   const [time, setTime] = useState(90);
   const [results, setResults] = useState<Result[]>([]);
 
@@ -57,10 +58,11 @@ export default function Home() {
   const active = tests[area];
   const score = useMemo(() => answers.reduce((sum, answer, i) => sum + (answer === active.questions[i]?.answer ? 1 : 0), 0), [answers, active.questions]);
 
-  function begin(type: Area) { setArea(type); setIndex(0); setAnswers([]); setSelected(null); setTime(tests[type].time); setView("test"); }
+  function begin(type: Area) { setArea(type); setIndex(0); setAnswers([]); setSelected(null); setChecked(false); setTime(tests[type].time); setView("test"); }
   function next() {
     if (selected === null) return;
-    const updated = [...answers, selected]; setAnswers(updated); setSelected(null);
+    if (!checked) { setChecked(true); return; }
+    const updated = [...answers, selected]; setAnswers(updated); setSelected(null); setChecked(false);
     if (index === active.questions.length - 1) finish(updated); else setIndex(i => i + 1);
   }
   function finish(finalAnswers = answers) {
@@ -75,8 +77,9 @@ export default function Home() {
       <div className="testMeta"><span>{active.kicker}</span><span>Question {index + 1} of {active.questions.length}</span></div>
       <div className="progress"><i style={{width: `${((index + 1) / active.questions.length) * 100}%`}} /></div>
       <h1>{active.questions[index].prompt}</h1>
-      <div className="options">{active.questions[index].options.map((option, i) => <button key={option} onClick={() => setSelected(i)} className={selected === i ? "chosen" : ""}><b>{String.fromCharCode(65 + i)}</b><span>{option}</span>{selected === i && <Check size={20}/>}</button>)}</div>
-      <div className="testActions"><span>Choose the best answer</span><button disabled={selected === null} onClick={next}>{index === active.questions.length - 1 ? "Finish test" : "Next question"}<ArrowRight size={18}/></button></div>
+      <div className="options">{active.questions[index].options.map((option, i) => { const isCorrect = i === active.questions[index].answer; const isWrong = checked && selected === i && !isCorrect; const revealCorrect = checked && isCorrect; return <button key={option} disabled={checked} onClick={() => setSelected(i)} className={`${selected === i ? "chosen" : ""} ${revealCorrect ? "answerCorrect" : ""} ${isWrong ? "answerWrong" : ""}`}><b>{String.fromCharCode(65 + i)}</b><span>{option}</span>{revealCorrect ? <Check size={20}/> : isWrong ? <X size={20}/> : selected === i && <Check size={20}/>}</button>})}</div>
+      {checked && <div className={`instantFeedback ${selected === active.questions[index].answer ? "correct" : "incorrect"}`}><span>{selected === active.questions[index].answer ? <Check/> : <X/>}</span><p><b>{selected === active.questions[index].answer ? "Correct" : "Not quite"}</b>{active.questions[index].detail}</p></div>}
+      <div className="testActions"><span>{checked ? "Review the explanation before continuing" : "Choose the best answer"}</span><button disabled={selected === null} onClick={next}>{!checked ? "Check answer" : index === active.questions.length - 1 ? "View results" : "Next question"}<ArrowRight size={18}/></button></div>
     </section>
   </main>;
 
